@@ -14,6 +14,17 @@ pritisnut.
 int main(void)
 {
 	WDTCTL = WDTPW | WDTHOLD;	// stop watchdog timer
-	
+    // configure button S1
+    P1REN |= BIT4;              // enable pull up/down
+    P1OUT |= BIT4;              // set pull up
+    P1DIR &= ~BIT4;             // configure P1.4 as in
+    P1IES |= BIT4;              // interrupt on falling edge
+    P1IFG &= ~BIT4;             // clear flag
+    P1IE  |= BIT4;              // enable interrupt
+    /* initialize Timer A */
+    TA0CCR0 = TIMER_PERIOD;     // debounce period
+    TA0CCTL0 = CCIE;            // enable CCR0 interrupt
+    TA0CTL = TASSEL__ACLK;
+
 	return 0;
 }
