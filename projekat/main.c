@@ -73,3 +73,9 @@ int main(void)
     ADC12CTL0 |= ADC12ENC;      // Enable conversion
     return 0;
 }
+static volatile uint8_t cifre[2] = {0};
+void display(const uint8_t broj)
+{
+    cifre[0] = broj%16;
+    cifre[1] = broj/16;
+}
