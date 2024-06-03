@@ -13,7 +13,7 @@
 /**
  * main.c
  */
-#define NUM_SAMPLES    200
+#define NUM_SAMPLES    200     // 200 samples total
 #define SAMPLE_RATE    20      // 20 samples per second
 volatile unsigned int samples[NUM_SAMPLES] = { 0 };
 volatile unsigned int sample_index = 0;
