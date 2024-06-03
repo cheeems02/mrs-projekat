@@ -15,7 +15,7 @@
  */
 #define NUM_SAMPLES    200
 #define SAMPLE_RATE    20      // 20 samples per second
-volatile unsigned int samples[NUM_SAMPLES];
+volatile unsigned int samples[NUM_SAMPLES] = { 0 };
 volatile unsigned int sample_index = 0;
 volatile unsigned char sampling = 0;
 int main(void)
@@ -57,9 +57,12 @@ int main(void)
     TA0CCR0 = 32768 / SAMPLE_RATE;      // Set timer count for 20Hz
     TA0CCTL0 = CCIE;            // enable CCR0 interrupt
     TA0CTL = TASSEL__ACLK;
-    //7seg
+    // sevenseg 1
     P7DIR |= BIT0;              // set P7.0 as out (SEL1)
-    P7OUT &= ~BIT0;             // enable display 1
+    P7OUT |= BIT0;              // disable display 1
+    // sevenseg 2
+    P6DIR |= BIT4;              // set P6.4 as out (SEL2)
+    P6OUT |= BIT4;              // disable display 2
     // a,b,c,d,e,f,g
     P2DIR |= BIT6 | BIT3;       // configure P2.3 and P2.6 as out
     P3DIR |= BIT7;              // configure P3.7 as out
@@ -73,11 +76,17 @@ int main(void)
     ADC12MCTL0 = ADC12INCH_1;   // ADC input channel A1 (P6.1)
     ADC12IE = ADC12IE0;         // Enable interrupt
     ADC12CTL0 |= ADC12ENC;      // Enable conversion
+    __enable_interrupt();       //GIE
+    while (1)
+    {
+
+    }
     return 0;
 }
-static volatile uint8_t cifre[2] = {0};
+static volatile uint8_t cifre[2] = { 0 };
 void display(const uint8_t broj)
 {
-    cifre[0] = broj%16;
-    cifre[1] = broj/16;
+    cifre[1] = broj >> 4;
+    cifre[0] = broj - cifre[1];
 }
+
