@@ -1,4 +1,6 @@
 #include <msp430.h> 
+#include <stdint.h>
+#include "function.h"
 /*
  * Napisati program kojim se vrši akvizicija signala sa jednog naponskog kanala. Na komandu
  pritiska tastera startuje se akvizicija sa uèestanošæu od 20 sample/s, i sekvenca dužina 200 odbiraka
