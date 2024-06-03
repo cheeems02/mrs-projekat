@@ -15,9 +15,10 @@
  */
 #define NUM_SAMPLES    200     // 200 samples total
 #define SAMPLE_RATE    20      // 20 samples per second
+#define MUX_PERIOD     (163)  /* ~5ms (4.97ms)  */
 volatile unsigned int samples[NUM_SAMPLES] = { 0 };
 volatile unsigned int sample_index = 0;
-volatile unsigned char sampling = 0;
+volatile unsigned int sampling = 0;
 int main(void)
 {
     WDTCTL = WDTPW | WDTHOLD;	// stop watchdog timer
@@ -57,6 +58,7 @@ int main(void)
     TA0CCR0 = 32768 / SAMPLE_RATE;      // Set timer count for 20Hz
     TA0CCTL0 = CCIE;            // enable CCR0 interrupt
     TA0CTL = TASSEL__ACLK;
+    // 7SEG
     // sevenseg 1
     P7DIR |= BIT0;              // set P7.0 as out (SEL1)
     P7OUT |= BIT0;              // disable display 1
@@ -71,11 +73,11 @@ int main(void)
     //ADC
     P6SEL |= BIT1;              // enable left pot
     ADC12CTL0 &= ~ADC12ENC;     // disable ADC before configuring
-    ADC12CTL0 = ADC12SHT0_2 | ADC12ON;   // Sampling time, ADC12 on
+    ADC12CTL0 = ADC12SHT0_4 | ADC12ON;   // Sampling time, ADC12 on
     ADC12CTL1 = ADC12SHP;       // Use sampling timer
+    ADC12CTL2 &= ~ADC12RES_2;      // 8bit resolution
     ADC12MCTL0 = ADC12INCH_1;   // ADC input channel A1 (P6.1)
     ADC12IE = ADC12IE0;         // Enable interrupt
-    ADC12CTL0 |= ADC12ENC;      // Enable conversion
     __enable_interrupt();       //GIE
     while (1)
     {
@@ -85,8 +87,48 @@ int main(void)
 }
 static volatile uint8_t cifre[2] = { 0 };
 void display(const uint8_t broj)
-{
-    cifre[1] = broj >> 4;
-    cifre[0] = broj - cifre[1];
+{                               //0x0F je za skidanje viših cifara
+    cifre[1] = (broj >> 4) & 0x0F;
+    cifre[0] = broj & 0x0F;
 }
-
+void start()
+{
+    sampling = 1;
+    ADC12CTL0 |= ADC12ENC;      // Enable conversion
+    P1OUT |= BIT0;              //set output as 1
+}
+void stop() {
+    sampling = 0;
+    P1OUT &= ~BIT0;  // LED OFF
+    // Disable ADC to save power
+    ADC12CTL0 &= ~ADC12ENC;
+}
+void minimum()
+{
+    unsigned int i = 0;
+    unsigned int minVal = 0xFFFF;
+    for (i = 0; i < 200; i++) {
+        if (samples[i] < minVal) {
+            minVal = samples[i];
+        }
+    }
+}
+void average()
+{
+    unsigned int i = 0;
+    unsigned long sum = 0;
+    for (i = 0; i < 200; i++) {
+        sum += samples[i];
+    }
+    unsigned int avgVal = sum / 200;
+}
+void maximum()
+{
+    unsigned int i = 0;
+    unsigned int maxVal = 0;
+    for (i = 0; i < 200; i++) {
+        if (samples[i] > maxVal) {
+            maxVal = samples[i];
+        }
+    }
+}

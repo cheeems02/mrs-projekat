@@ -11,6 +11,7 @@ GEN_CMDS__FLAG :=
 
 ORDERED_OBJS += \
 "./function.obj" \
+"./isr_buttons.obj" \
 "./main.obj" \
 "../lnk_msp430f5529.cmd" \
 $(GEN_CMDS__FLAG) \
@@ -143,8 +144,9 @@ projekat.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 # Other Targets
 clean:
 	-$(RM) $(EXE_OUTPUTS__QUOTED)
-	-$(RM) "function.obj" "main.obj" 
+	-$(RM) "function.obj" "isr_buttons.obj" "main.obj" 
 	-$(RM) "function.d" "main.d" 
+	-$(RM) "isr_buttons.d" 
 	-@echo 'Finished clean'
 	-@echo ' '
 
