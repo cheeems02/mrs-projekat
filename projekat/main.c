@@ -1,6 +1,5 @@
 #include <msp430.h> 
 #include <stdint.h>
-#include "function.h"
 /*
  * Napisati program kojim se vrši akvizicija signala sa jednog naponskog kanala. Na komandu
  pritiska tastera startuje se akvizicija sa uèestanošæu od 20 sample/s, i sekvenca dužina 200 odbiraka
@@ -15,7 +14,9 @@
  */
 #define NUM_SAMPLES    200     // 200 samples total
 #define SAMPLE_RATE    20      // 20 samples per second
-#define MUX_PERIOD     (163)  /* ~5ms (4.97ms)  */
+#define MUX_PERIOD     (164)  // ~5ms
+#define SECOND 32768            //1s
+#define DEBOUNCE 33             //1ms
 volatile unsigned int samples[NUM_SAMPLES] = { 0 };
 volatile unsigned int sample_index = 0;
 volatile unsigned int sampling = 0;
@@ -54,10 +55,18 @@ int main(void)
     // led
     P1DIR |= BIT0;              //set P1.0 as output
     P1OUT &= ~BIT0;             //set output as 0
-    // initialize Timer A
-    TA0CCR0 = 32768 / SAMPLE_RATE;      // Set timer count for 20Hz
+    // initialize Timer A0
+    TA0CCR0 = SECOND / SAMPLE_RATE;      // Set timer count for 20Hz
     TA0CCTL0 = CCIE;            // enable CCR0 interrupt
     TA0CTL = TASSEL__ACLK;
+    // initialize Timer A1 - debounce
+    TA1CCR0 = DEBOUNCE;      // Set timer count for 20Hz
+    TA1CCTL0 = CCIE;            // enable CCR0 interrupt
+    TA1CTL = TASSEL__ACLK;
+    // initialize Timer A2 - mux
+    TA2CCR0 = MUX_PERIOD;      // Set timer count for 20Hz
+    TA2CCTL0 = CCIE;            // enable CCR0 interrupt
+    TA2CTL = TASSEL__ACLK;
     // 7SEG
     // sevenseg 1
     P7DIR |= BIT0;              // set P7.0 as out (SEL1)
@@ -97,18 +106,20 @@ void start()
     ADC12CTL0 |= ADC12ENC;      // Enable conversion
     P1OUT |= BIT0;              //set output as 1
 }
-void stop() {
+void stop()
+{
     sampling = 0;
     P1OUT &= ~BIT0;  // LED OFF
-    // Disable ADC to save power
-    ADC12CTL0 &= ~ADC12ENC;
+    ADC12CTL0 &= ~ADC12ENC; //disable ADC
 }
 void minimum()
 {
     unsigned int i = 0;
     unsigned int minVal = 0xFFFF;
-    for (i = 0; i < 200; i++) {
-        if (samples[i] < minVal) {
+    for (i = 0; i < 200; i++)
+    {
+        if (samples[i] < minVal)
+        {
             minVal = samples[i];
         }
     }
@@ -117,7 +128,8 @@ void average()
 {
     unsigned int i = 0;
     unsigned long sum = 0;
-    for (i = 0; i < 200; i++) {
+    for (i = 0; i < 200; i++)
+    {
         sum += samples[i];
     }
     unsigned int avgVal = sum / 200;
@@ -126,8 +138,10 @@ void maximum()
 {
     unsigned int i = 0;
     unsigned int maxVal = 0;
-    for (i = 0; i < 200; i++) {
-        if (samples[i] > maxVal) {
+    for (i = 0; i < 200; i++)
+    {
+        if (samples[i] > maxVal)
+        {
             maxVal = samples[i];
         }
     }

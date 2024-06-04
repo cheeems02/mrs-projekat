@@ -1,70 +1,92 @@
-;-------------------------------------------------------------------------------
-; MSP430 Assembler Code Template for use with TI Code Composer Studio
-;
-;
-;-------------------------------------------------------------------------------
-            .cdecls C,LIST,"msp430.h"       ; Include device header file
+; Function that returns 7 segment display from certain digit
 
-;-------------------------------------------------------------------------------
-			.ref	WriteLed				; reference the extern function
-			.ref	disp1					; reference the global variable
-			.ref	disp2					; reference the global variable
+			.cdecls C,LIST,"msp430.h"       ; Include device header file
 
-;-------------------------------------------------------------------------------
-    .sect ".text"
-    .global _button1_ISR
-    .global _button2_ISR
-    .global _button3_ISR
-    .global _button4_ISR
+			.def	WriteLed
 
-button1_ISR: // P1.1 Interrupt Service Routine
-    push.w  SR
-    push.w  R12
-    push.w  R13
-    mov.w   #start, R12
-    call    R12
-    bic.w   #BIT1, &P1IFG
-    pop.w   R13
-    pop.w   R12
-    pop.w   SR
-    reti
+			.sect	.const
 
-button2_ISR: // P2.1 Interrupt Service Routine
-    push.w  SR
-    push.w  R12
-    push.w  R13
-    mov.w   #minimum, R12
-    call    R12
-    bic.w   #BIT1, &P2IFG
-    pop.w   R13
-    pop.w   R12
-    pop.w   SR
-    reti
+segtab2		.byte	0x48					; digit 0-9 table
+			.byte	0x40
+			.byte	0x08
+			.byte	0x40
+			.byte	0x40
+			.byte	0x40
+			.byte	0x48
+			.byte	0x40
+			.byte	0x48
+			.byte	0x40
+			.byte	0x48
+			.byte	0x48
+			.byte	0x08
+			.byte	0x48
+			.byte	0x08
+			.byte	0x08
 
-button3_ISR: // P1.4 Interrupt Service Routine
-    push.w  SR
-    push.w  R12
-    push.w  R13
-    mov.w   #average, R12
-    call    R12
-    bic.w   #BIT4, &P1IFG
-    pop.w   R13
-    pop.w   R12
-    pop.w   SR
-    reti
+segtab3		.byte	0x80					; digit 0-9 table
+			.byte	0x00
+			.byte	0x80
+			.byte	0x80
+			.byte	0x80
+			.byte	0x80
+			.byte	0x80
+			.byte	0x80
+			.byte	0x80
+			.byte	0x80
+			.byte	0x80
+			.byte	0x00
+			.byte	0x80
+			.byte	0x00
+			.byte	0x80
+			.byte	0x80
 
-button4_ISR: // P1.5 Interrupt Service Routine
-    push.w  SR
-    push.w  R12
-    push.w  R13
-    mov.w   #maximum, R12
-    call    R12
-    bic.w   #BIT5, &P1IFG
-    pop.w   R13
-    pop.w   R12
-    pop.w   SR
-    reti
+segtab4		.byte	0x09					; digit 0-9 table
+			.byte	0x08
+			.byte	0x08
+			.byte	0x08
+			.byte	0x09
+			.byte	0x01
+			.byte	0x01
+			.byte	0x08
+			.byte	0x09
+			.byte	0x09
+			.byte	0x09
+			.byte	0x01
+			.byte	0x01
+			.byte	0x08
+			.byte	0x01
+			.byte	0x01
 
-            .sect   ".int49"
-            .short  CCR0ISR
+segtab8		.byte	0x02					; digit 0-9 table
+			.byte	0x00
+			.byte	0x06
+			.byte	0x06
+			.byte	0x04
+			.byte	0x06
+			.byte	0x06
+			.byte	0x00
+			.byte	0x06
+			.byte	0x06
+			.byte	0x04
+			.byte	0x06
+			.byte	0x02
+			.byte	0x06
+			.byte	0x06
+			.byte	0x04
 
+			.text
+WriteLed	bis.b 	#0x48, &P2OUT
+			bic.b	segtab2(R12), &P2OUT
+
+			bis.b 	#0x80, &P3OUT
+			bic.b	segtab3(R12), &P3OUT
+
+			bis.b 	#0x09, &P4OUT
+			bic.b	segtab4(R12), &P4OUT
+
+			bis.b 	#0x06, &P8OUT
+			bic.b	segtab8(R12), &P8OUT
+
+			ret
+
+			.end
