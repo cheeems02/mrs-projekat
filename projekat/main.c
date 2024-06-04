@@ -1,4 +1,4 @@
-#include <msp430.h> 
+#include <msp430.h>
 #include <stdint.h>
 /*
  * Napisati program kojim se vrši akvizicija signala sa jednog naponskog kanala. Na komandu
@@ -104,29 +104,29 @@ void __attribute__ ((interrupt(PORT1_VECTOR))) P1ISR(void) //debounce
         P1IFG &= ~BIT4;             // clear P1.4 flag
         P1IE &= ~BIT4;              // disable P1.4 interrupt
     }
-    if ((P1IFG & BIT1) != 0)        // check if P1.4 flag is set
+    if ((P1IFG & BIT1) != 0)        // check if P1.1 flag is set
     {
         /* start timer */
         TA0CTL |= MC__UP;
-        P1IFG &= ~BIT1;             // clear P1.4 flag
-        P1IE &= ~BIT1;              // disable P1.4 interrupt
+        P1IFG &= ~BIT1;             // clear P1.1 flag
+        P1IE &= ~BIT1;              // disable P1.1 interrupt
     }
-    if ((P1IFG & BIT5) != 0)        // check if P1.4 flag is set
+    if ((P1IFG & BIT5) != 0)        // check if P1.5 flag is set
     {
         /* start timer */
         TA0CTL |= MC__UP;
-        P1IFG &= ~BIT5;             // clear P1.4 flag
-        P1IE &= ~BIT5;              // disable P1.4 interrupt
+        P1IFG &= ~BIT5;             // clear P1.5 flag
+        P1IE &= ~BIT5;              // disable P1.5 interrupt
     }
 }
 void __attribute__ ((interrupt(PORT2_VECTOR))) P2ISR(void) //debounce, start
 {
-    if ((P2IFG & BIT1) != 0)        // check if P1.4 flag is set
+    if ((P2IFG & BIT1) != 0)        // check if P2.1 flag is set
     {
         /* start timer */
         TA0CTL |= MC__UP;
-        P2IFG &= ~BIT1;             // clear P1.4 flag
-        P2IE &= ~BIT1;              // disable P1.4 interrupt
+        P2IFG &= ~BIT1;             // clear P2.1 flag
+        P2IE &= ~BIT1;              // disable P2.1 interrupt
     }
 }
 static volatile uint8_t cifre[2] = { 0 };
@@ -134,6 +134,20 @@ void display(const uint8_t broj)
 {                               //0x0F je za skidanje viših cifara
     cifre[1] = (broj >> 4) & 0x0F;
     cifre[0] = broj & 0x0F;
+}
+void __attribute__ ((interrupt(TIMER0_A0_VECTOR))) TA0CCR0ISR(void) //stop counting
+{
+    if (sample_index < 200)
+    {
+        samples[sample_index] = ADC12MEM0;
+        TA0CTL |= MC__UP;
+    }
+    else
+    {
+        sampling = 0;
+        P1OUT &= ~BIT0;  // LED OFF
+        ADC12CTL0 &= ~ADC12ENC; //disable ADC
+    }
 }
 void __attribute__ ((interrupt(TIMER2_A0_VECTOR))) TA2CCR0ISR(void) //screen mux
 {
@@ -163,8 +177,10 @@ void __attribute__ ((interrupt(TIMER1_A0_VECTOR))) TA1CCR0ISR(void) //debounce
     if ((P2IN & BIT1) != 0)
     {
         sampling = 1;
-        ADC12CTL0 |= ADC12ENC;      // Enable conversion
-        P1OUT |= BIT0;              //set output as 1
+        sample_index = 0;        // reset sample index
+        ADC12CTL0 |= ADC12ENC;   // Enable conversion
+        P1OUT |= BIT0;           // set output as 1 (LED on)
+        TA0CTL |= MC__UP;        // Start Timer A0
     }
     if ((P1IN & BIT1) != 0)
     {
@@ -198,23 +214,6 @@ void __attribute__ ((interrupt(TIMER1_A0_VECTOR))) TA1CCR0ISR(void) //debounce
             {
                 minVal = samples[i];
             }
-        }
-    }
-}
-void __attribute__ ((interrupt(TIMER0_A0_VECTOR))) TA0CCR0ISR(void) //stop counting
-{
-    if (sampling == 1)
-    {
-        if (sample_index<200)
-        {
-            samples[sample_index]=ADC12MEM0;
-            TA0CTL |= MC__UP;
-        }
-        else
-        {
-            sampling = 0;
-            P1OUT &= ~BIT0;  // LED OFF
-            ADC12CTL0 &= ~ADC12ENC; //disable ADC
         }
     }
 }
