@@ -127,12 +127,12 @@ void minimum()
 void average()
 {
     unsigned int i = 0;
-    unsigned long sum = 0;
+    unsigned long avg = 0;
     for (i = 0; i < 200; i++)
     {
-        sum += samples[i];
+        avg += samples[i];
     }
-    unsigned int avgVal = sum / 200;
+    avg = avg / 200;
 }
 void maximum()
 {
@@ -145,4 +145,27 @@ void maximum()
             maxVal = samples[i];
         }
     }
+}
+void __attribute__ ((interrupt(TIMER1_A2_VECTOR))) TA1CCR0ISR(void)
+{
+    static uint8_t current_digit = 0;
+    /* algorithm:
+     * - turn off previous display (SEL signal)
+     * - set a..g for current display
+     * - activate current display
+     */
+    if (current_digit == 1)
+    {
+        P6OUT |= BIT4;          // turn off SEL2
+        WriteLed(cifre[current_digit]);    // define seg a..g
+        P7OUT &= ~BIT0;         // turn on SEL1
+    }
+    else if (current_digit == 0)
+    {
+        P7OUT |= BIT0;
+        WriteLed(cifre[current_digit]);
+        P6OUT &= ~BIT4;
+    }
+    current_digit = (current_digit + 1) & 0x01;
+    return;
 }
