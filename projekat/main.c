@@ -74,9 +74,9 @@ void output_setup(void)
 void timer_setup(void)
 {
     // initialize Timer A0 - sampling
-//    TA0CCR0 = SECOND / SAMPLE_RATE;      // Set timer count for 20Hz
-//    TA0CCTL0 = CCIE;            // enable CCR0 interrupt
-//    TA0CTL = TASSEL__ACLK;
+    TA0CCR0 = SECOND / SAMPLE_RATE;      // Set timer count for 20Hz
+    TA0CCTL0 = CCIE;            // enable CCR0 interrupt
+    TA0CTL = TASSEL__ACLK;
     // initialize Timer A1 - debounce
     TA1CCR0 = DEBOUNCE;      // Set timer count for 20Hz
     TA1CCTL0 = CCIE;            // enable CCR0 interrupt
@@ -98,10 +98,6 @@ void adc_setup(void)
     ADC12MCTL0 |= ADC12INCH_0;  //reference AVCC and AVSS, channel A0
     ADC12CTL0 |= ADC12ENC;      // enable ADC12
     ADC12IE |= ADC12IE0;        // enable interrupt when MEM0 is written
-    //tajmer za ADC
-    TB0CCR0= (SECOND/20);
-    TB0CCTL0 |= OUTMOD_4;
-    TB0CTL |= TBSSEL__ACLK | MC__UP;
 }
 int main(void)
 {
@@ -196,7 +192,7 @@ void __attribute__ ((interrupt(TIMER1_A0_VECTOR))) TA1CCR0ISR(void) //debounce
         }
     }
 }
-void __attribute__ ((interrupt(ADC12_VECTOR))) ADC12ISR(void) //stop counting
+void __attribute__ ((interrupt(TIMER0_A0_VECTOR))) TA0CCR0ISR(void) //stop counting
 {
     if (sample_index < 200 && sampling)
     {
