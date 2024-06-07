@@ -17,13 +17,12 @@
 #define MUX_PERIOD     (164)  // ~5ms
 #define SECOND 32768            //1s
 #define DEBOUNCE 33             //1ms
-#define DISPLAY_START 69
 volatile unsigned int samples[NUM_SAMPLES] = { 0 };
 volatile unsigned int sample_index = 0;
 volatile unsigned int sampling = 0;
-int main(void)
+static volatile uint8_t cifre[2] = { 0 };
+void buttons_setup(void)
 {
-    WDTCTL = WDTPW | WDTHOLD;	// stop watchdog timer
     //buttons
     // configure button S1 - start
     P2REN |= BIT1;              // enable pull up/down
@@ -53,21 +52,12 @@ int main(void)
     P1IES |= BIT5;              // interrupt on falling edge
     P1IFG &= ~BIT5;             // clear flag
     P1IE |= BIT5;               // enable interrupt
+}
+void output_setup(void)
+{
     // led
     P1DIR |= BIT0;              //set P1.0 as output
     P1OUT &= ~BIT0;             //set output as 0
-    // initialize Timer A0
-    TA0CCR0 = SECOND / SAMPLE_RATE;      // Set timer count for 20Hz
-    TA0CCTL0 = CCIE;            // enable CCR0 interrupt
-    TA0CTL = TASSEL__ACLK;
-    // initialize Timer A1 - debounce
-    TA1CCR0 = DEBOUNCE;      // Set timer count for 20Hz
-    TA1CCTL0 = CCIE;            // enable CCR0 interrupt
-    TA1CTL = TASSEL__ACLK;
-    // initialize Timer A2 - mux
-    TA2CCR0 = MUX_PERIOD;      // Set timer count for 20Hz
-    TA2CCTL0 = CCIE;            // enable CCR0 interrupt
-    TA2CTL = TASSEL__ACLK;
     // 7SEG
     // sevenseg 1
     P7DIR |= BIT0;              // set P7.0 as out (SEL1)
@@ -80,14 +70,46 @@ int main(void)
     P3DIR |= BIT7;              // configure P3.7 as out
     P4DIR |= BIT3 | BIT0;       // configure P4.0 and P4.3 as out
     P8DIR |= BIT2 | BIT1;       // configure P8.1 and P8.2 as out
+}
+void timer_setup(void)
+{
+    // initialize Timer A0 - sampling
+//    TA0CCR0 = SECOND / SAMPLE_RATE;      // Set timer count for 20Hz
+//    TA0CCTL0 = CCIE;            // enable CCR0 interrupt
+//    TA0CTL = TASSEL__ACLK;
+    // initialize Timer A1 - debounce
+    TA1CCR0 = DEBOUNCE;      // Set timer count for 20Hz
+    TA1CCTL0 = CCIE;            // enable CCR0 interrupt
+    TA1CTL = TASSEL__ACLK;
+    // initialize Timer A2 - display mux
+    TA2CCR0 = MUX_PERIOD;      // Set timer count for 20Hz
+    TA2CCTL0 = CCIE;            // enable CCR0 interrupt
+    TA2CTL = TASSEL__ACLK;
+}
+void adc_setup(void)
+{
     //ADC
-    P6SEL |= BIT1;              // enable left pot
     ADC12CTL0 &= ~ADC12ENC;     // disable ADC before configuring
-    ADC12CTL0 = ADC12SHT0_4 | ADC12ON;   // Sampling time, ADC12 on
-    ADC12CTL1 = ADC12SHP;       // Use sampling timer
-    ADC12CTL2 &= ~ADC12RES_2;      // 8bit resolution
-    ADC12MCTL0 = ADC12INCH_1;   // ADC input channel A1 (P6.1)
-    ADC12IE = ADC12IE0;         // Enable interrupt
+    ADC12CTL0 |= ADC12ON;       // ADC on
+    ADC12CTL1 |= ADC12SHS_2 + ADC12CONSEQ_2;
+                                      // start address ADC12MEM0, timer B0 OUT0 starts conv
+                                      // single channel continuous conversion, MODOSC clock
+    ADC12CTL2 &= ~ADC12RES_2;   // 8 bit conversion result
+    ADC12MCTL0 |= ADC12INCH_0;  //reference AVCC and AVSS, channel A0
+    ADC12CTL0 |= ADC12ENC;      // enable ADC12
+    ADC12IE |= ADC12IE0;        // enable interrupt when MEM0 is written
+    //tajmer za ADC
+    TB0CCR0= (SECOND/20);
+    TB0CCTL0 |= OUTMOD_4;
+    TB0CTL |= TBSSEL__ACLK | MC__UP;
+}
+int main(void)
+{
+    WDTCTL = WDTPW | WDTHOLD;   // stop watchdog timer
+    buttons_setup();
+    output_setup();
+    timer_setup();
+    adc_setup();
     __enable_interrupt();       //GIE
     while (1)
     {
@@ -95,52 +117,92 @@ int main(void)
     }
     return 0;
 }
-void __attribute__ ((interrupt(PORT1_VECTOR))) P1ISR(void) //debounce
+void __attribute__ ((interrupt(PORT1_VECTOR))) P1ISR(void) //debounce, outputs
 {
-    if ((P1IFG & BIT4) != 0)        // check if P1.4 flag is set
+    if (P1IFG & BIT4)        // check if P1.4 flag is set
     {
         /* start timer */
-        TA0CTL |= MC__UP;
-        P1IFG &= ~BIT4;             // clear P1.4 flag
         P1IE &= ~BIT4;              // disable P1.4 interrupt
+        TA1CTL |= MC__UP;           // start debounce timer
+        P1IFG &= ~BIT4;             // clear P1.4 flag
     }
-    if ((P1IFG & BIT1) != 0)        // check if P1.1 flag is set
+    if (P1IFG & BIT1)        // check if P1.1 flag is set
     {
         /* start timer */
-        TA0CTL |= MC__UP;
-        P1IFG &= ~BIT1;             // clear P1.1 flag
         P1IE &= ~BIT1;              // disable P1.1 interrupt
+        TA1CTL |= MC__UP;           // start debounce timer
+        P1IFG &= ~BIT1;             // clear P1.1 flag
     }
-    if ((P1IFG & BIT5) != 0)        // check if P1.5 flag is set
+    if (P1IFG & BIT5)        // check if P1.5 flag is set
     {
         /* start timer */
-        TA0CTL |= MC__UP;
-        P1IFG &= ~BIT5;             // clear P1.5 flag
         P1IE &= ~BIT5;              // disable P1.5 interrupt
+        TA1CTL |= MC__UP;           // start debounce timer
+        P1IFG &= ~BIT5;             // clear P1.5 flag
     }
 }
 void __attribute__ ((interrupt(PORT2_VECTOR))) P2ISR(void) //debounce, start
 {
-    if ((P2IFG & BIT1) != 0)        // check if P2.1 flag is set
+    if (P2IFG & BIT1)       // check if P2.1 flag is set
     {
         /* start timer */
-        TA0CTL |= MC__UP;
-        P2IFG &= ~BIT1;             // clear P2.1 flag
         P2IE &= ~BIT1;              // disable P2.1 interrupt
+        TA1CTL |= MC__UP;           //enable A0 in UP
+        P2IFG &= ~BIT1;             // clear P2.1 flag
     }
 }
-static volatile uint8_t cifre[2] = { 0 };
-void display(const uint8_t broj)
-{                               //0x0F je za skidanje viših cifara
-    cifre[1] = (broj >> 4) & 0x0F;
-    cifre[0] = broj & 0x0F;
-}
-void __attribute__ ((interrupt(TIMER0_A0_VECTOR))) TA0CCR0ISR(void) //stop counting
+void __attribute__ ((interrupt(TIMER1_A0_VECTOR))) TA1CCR0ISR(void) //debounce
 {
-    if (sample_index < 200)
+    if (P2IN & BIT1 && !sampling)
+    {
+        sampling = 1;
+        sample_index = 0;        // reset sample index
+        ADC12CTL0 |= ADC12ENC | ADC12SC;   // Enable conversion
+        P1OUT |= BIT0;           // set output as 1 (LED on)
+        TA0CTL |= MC__UP;        // Start Timer A0
+    }
+    if (P1IN & BIT1 && !sampling)
+    {
+        unsigned int i = 0;
+        unsigned long output = 0;
+        for (i = 0; i < 200; i++)
+        {
+            output += samples[i];
+        }
+        output = output / 200;
+    }
+    if (P1IN & BIT4 && !sampling)
+    {
+        unsigned int i = 0;
+        unsigned int output = 0;
+        for (i = 0; i < 200; i++)
+        {
+            if (samples[i] > output)
+            {
+                output = samples[i];
+            }
+        }
+    }
+    if (P1IN & BIT5 && !sampling)
+    {
+        unsigned int i = 0;
+        unsigned int output = 0xFFFF;
+        for (i = 0; i < 200; i++)
+        {
+            if (samples[i] < output)
+            {
+                output = samples[i];
+            }
+        }
+    }
+}
+void __attribute__ ((interrupt(ADC12_VECTOR))) ADC12ISR(void) //stop counting
+{
+    if (sample_index < 200 && sampling)
     {
         samples[sample_index] = ADC12MEM0;
         TA0CTL |= MC__UP;
+        sample_index++;
     }
     else
     {
@@ -157,13 +219,13 @@ void __attribute__ ((interrupt(TIMER2_A0_VECTOR))) TA2CCR0ISR(void) //screen mux
      * - set a..g for current display
      * - activate current display
      */
-    if (current_digit == 1)
+    if (current_digit)
     {
         P6OUT |= BIT4;          // turn off SEL2
         WriteLed(cifre[current_digit]);    // define seg a..g
         P7OUT &= ~BIT0;         // turn on SEL1
     }
-    else if (current_digit == 0)
+    else
     {
         P7OUT |= BIT0;
         WriteLed(cifre[current_digit]);
@@ -172,48 +234,9 @@ void __attribute__ ((interrupt(TIMER2_A0_VECTOR))) TA2CCR0ISR(void) //screen mux
     current_digit = (current_digit + 1) & 0x01;
     return;
 }
-void __attribute__ ((interrupt(TIMER1_A0_VECTOR))) TA1CCR0ISR(void) //debounce
+void display(const uint8_t broj)
 {
-    if ((P2IN & BIT1) != 0)
-    {
-        sampling = 1;
-        sample_index = 0;        // reset sample index
-        ADC12CTL0 |= ADC12ENC;   // Enable conversion
-        P1OUT |= BIT0;           // set output as 1 (LED on)
-        TA0CTL |= MC__UP;        // Start Timer A0
-    }
-    if ((P1IN & BIT1) != 0)
-    {
-        unsigned int i = 0;
-        unsigned long avg = 0;
-        for (i = 0; i < 200; i++)
-        {
-            avg += samples[i];
-        }
-        avg = avg / 200;
-    }
-    if ((P1IN & BIT4) != 0)
-    {
-        unsigned int i = 0;
-        unsigned int maxVal = 0;
-        for (i = 0; i < 200; i++)
-        {
-            if (samples[i] > maxVal)
-            {
-                maxVal = samples[i];
-            }
-        }
-    }
-    if ((P1IN & BIT5) != 0)
-    {
-        unsigned int i = 0;
-        unsigned int minVal = 0xFFFF;
-        for (i = 0; i < 200; i++)
-        {
-            if (samples[i] < minVal)
-            {
-                minVal = samples[i];
-            }
-        }
-    }
+    //0x0F je za skidanje viših cifara
+    cifre[1] = (broj >> 4) & 0x0F;
+    cifre[0] = broj & 0x0F;
 }
