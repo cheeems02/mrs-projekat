@@ -4,7 +4,7 @@
 
 SHELL = cmd.exe
 
-CG_TOOL_ROOT := D:/ti/CCS12/ccs/tools/compiler/ti-cgt-msp430_21.6.1.LTS
+CG_TOOL_ROOT := C:/ti/ccs1270/ccs/tools/compiler/ti-cgt-msp430_21.6.1.LTS
 
 GEN_OPTS__FLAG := 
 GEN_CMDS__FLAG := 
@@ -12,6 +12,7 @@ GEN_CMDS__FLAG :=
 ORDERED_OBJS += \
 "./isr_buttons.obj" \
 "./main.obj" \
+"../lnk_msp430f5529.cmd" \
 $(GEN_CMDS__FLAG) \
 -llibmath.a \
 -llibc.a \
@@ -128,14 +129,14 @@ EXE_OUTPUTS__QUOTED += \
 
 
 # All Target
-all: $(OBJS) $(GEN_CMDS)
+all: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 	@$(MAKE) --no-print-directory -Onone "projekat.out"
 
 # Tool invocations
-projekat.out: $(OBJS) $(GEN_CMDS)
+projekat.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 	@echo 'Building target: "$@"'
 	@echo 'Invoking: MSP430 Linker'
-	"D:/ti/CCS12/ccs/tools/compiler/ti-cgt-msp430_21.6.1.LTS/bin/cl430" -vmsp --data_model=restricted --use_hw_mpy=F5 --advice:power=all --define=__MSP430F5529__ -g --printf_support=minimal --diag_warning=225 --diag_wrap=off --display_error_number --silicon_errata=CPU21 --silicon_errata=CPU22 --silicon_errata=CPU23 --silicon_errata=CPU40 -z -m"projekat.map" --heap_size=160 --stack_size=160 --cinit_hold_wdt=on -i"D:/ti/CCS12/ccs/ccs_base/msp430/include" -i"D:/ti/CCS12/ccs/ccs_base/msp430/lib/5xx_6xx_FRxx" -i"D:/ti/CCS12/ccs/tools/compiler/ti-cgt-msp430_21.6.1.LTS/lib" -i"D:/ti/CCS12/ccs/tools/compiler/ti-cgt-msp430_21.6.1.LTS/include" --reread_libs --diag_wrap=off --display_error_number --warn_sections --xml_link_info="projekat_linkInfo.xml" --use_hw_mpy=F5 --rom_model -o "projekat.out" $(ORDERED_OBJS)
+	"C:/ti/ccs1270/ccs/tools/compiler/ti-cgt-msp430_21.6.1.LTS/bin/cl430" -vmsp --data_model=restricted --use_hw_mpy=F5 --advice:power=all --define=__MSP430F5529__ -g --printf_support=minimal --diag_warning=225 --diag_wrap=off --display_error_number --silicon_errata=CPU21 --silicon_errata=CPU22 --silicon_errata=CPU23 --silicon_errata=CPU40 -z -m"projekat.map" --heap_size=160 --stack_size=160 --cinit_hold_wdt=on -i"C:/ti/ccs1270/ccs/ccs_base/msp430/include" -i"C:/ti/ccs1270/ccs/ccs_base/msp430/lib/5xx_6xx_FRxx" -i"C:/ti/ccs1270/ccs/tools/compiler/ti-cgt-msp430_21.6.1.LTS/lib" -i"C:/ti/ccs1270/ccs/tools/compiler/ti-cgt-msp430_21.6.1.LTS/include" --reread_libs --diag_wrap=off --display_error_number --warn_sections --xml_link_info="projekat_linkInfo.xml" --use_hw_mpy=F5 --rom_model -o "projekat.out" $(ORDERED_OBJS)
 	@echo 'Finished building target: "$@"'
 	@echo ' '
 
