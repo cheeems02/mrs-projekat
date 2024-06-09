@@ -95,7 +95,8 @@ void adc_setup(void)
     ADC12MCTL2 |= ADC12INCH_1;  // input channel A0 = P6.1
     ADC12CTL1 |= ADC12CONSEQ_2;  // single channel repeat
     ADC12CTL1 |= ADC12SHS_2;    //tajmer B0 CCR0 bit
-    ADC12CTL1 |= ADC12SSEL_1;   // clock setup
+    ADC12CTL1 |= ADC12SSEL_1;   // clock setup‚
+    ADC12IE |= ADC12IE0;        // enable interrupt when MEM0 is written
     ADC12CTL0 |= ADC12ENC;      // enable conversion
 }
 int main(void)
