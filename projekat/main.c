@@ -77,7 +77,7 @@ void timer_setup(void)
     TB0CCR0 = SECOND / SAMPLE_RATE;      // Set timer count for 20Hz
     TB0CCTL0 = CCIE;            // enable CCR0 interrupt
     TB0CCTL1 |= OUTMOD_4;
-    TB0CTL = TASSEL__ACLK;
+    TB0CTL = TBSSEL__ACLK;
     // initialize Timer A1 - debounce
     TA1CCR0 = DEBOUNCE;      // Set timer count for 20Hz
     TA1CCTL0 = CCIE;            // enable CCR0 interrupt
