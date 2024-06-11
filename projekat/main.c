@@ -90,6 +90,7 @@ void timer_setup(void)
 void adc_setup(void)
 {
     //ADC
+    P6SEL |= BIT1;              // set pin P6.1 as alternate function - A0 analog
     ADC12CTL0 &= ~ADC12ENC;     // disable while setting up
     ADC12CTL0 |= ADC12ON;       // activate ADC
     ADC12MCTL2 |= ADC12INCH_1;  // input channel A0 = P6.1
