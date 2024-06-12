@@ -93,7 +93,7 @@ void adc_setup(void)
     P6SEL |= BIT1;             // set pin P6.1 as alternate function - A0 analog
     ADC12CTL0 &= ~ADC12ENC;     // disable while setting up
     ADC12CTL0 |= ADC12ON;       // activate ADC
-    ADC12MCTL2 |= ADC12INCH_1;  // input channel A0 = P6.1
+    ADC12MCTL0 |= ADC12INCH_1;  // input channel A0 = P6.1
     ADC12CTL1 |= ADC12CONSEQ_2;  // single channel repeat
     ADC12CTL1 |= ADC12SHS_0;    //trigger preko tajmera A0
     ADC12CTL1 |= ADC12SSEL_1;   // clock setup‚
