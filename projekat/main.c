@@ -150,14 +150,14 @@ void __attribute__ ((interrupt(PORT2_VECTOR))) P2ISR(void) //debounce, start
 }
 void __attribute__ ((interrupt(TIMER1_A0_VECTOR))) TA1CCR0ISR(void) //debounce
 {
-    if (P2IN & BIT1 && !sampling)
+    if (((P2IN & BIT1) == 0) && ~(sampling))
     {
         sampling = 1;
         sample_index = 0;        // reset sample index
         P1OUT |= BIT0;           // set output as 1 (LED on)
         TA0CTL |= MC__UP;        // Start Timer A0
     }
-    if (P1IN & BIT1 && !sampling)
+    if (((P1IN & BIT1) == 0) && ~(sampling))
     {
         unsigned int i = 0;
         unsigned long output = 0;
@@ -167,7 +167,7 @@ void __attribute__ ((interrupt(TIMER1_A0_VECTOR))) TA1CCR0ISR(void) //debounce
         }
         output = output / 200;
     }
-    if (P1IN & BIT4 && !sampling)
+    if (((P1IN & BIT4) == 0) && ~sampling)
     {
         unsigned int i = 0;
         unsigned int output = 0;
@@ -179,7 +179,7 @@ void __attribute__ ((interrupt(TIMER1_A0_VECTOR))) TA1CCR0ISR(void) //debounce
             }
         }
     }
-    if (P1IN & BIT5 && !sampling)
+    if (((P1IN & BIT5))==0 && ~sampling)
     {
         unsigned int i = 0;
         unsigned int output = 0xFFFF;
