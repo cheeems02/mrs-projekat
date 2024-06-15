@@ -244,8 +244,8 @@ void __attribute__ ((interrupt(TIMER2_A0_VECTOR))) TA2CCR0ISR(void) //screen mux
      * - set a..g for current display
      * - activate current display
      */
-    cifre[1] = (output >> 4) & 0x0F;
-    cifre[0] = output & 0x0F;
+    cifre[1] = (output >> 4) & 0x0F;// deljenje sa 16, F skida višak cifre
+    cifre[0] = output & 0x0F;   // skidanje viših cifara
     if (current_digit)
     {
         P6OUT |= BIT4;          // turn off SEL2
@@ -254,10 +254,10 @@ void __attribute__ ((interrupt(TIMER2_A0_VECTOR))) TA2CCR0ISR(void) //screen mux
     }
     else
     {
-        P7OUT |= BIT0;
-        WriteLed(cifre[current_digit]);
-        P6OUT &= ~BIT4;
+        P7OUT |= BIT0;          // turn off SEL2
+        WriteLed(cifre[current_digit]);     // define seg a..g
+        P6OUT &= ~BIT4;         // turn on SEL1
     }
-    current_digit = (current_digit + 1) & 0x01;
+    current_digit = (current_digit + 1) & 0x01; // 0 i 1
     return;
 }
