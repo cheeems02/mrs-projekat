@@ -17,11 +17,11 @@
 #define MUX_PERIOD     (164)  // ~5ms
 #define SECOND (32768)            // 1s
 #define DEBOUNCE (164)             // 5ms
-volatile uint8_t samples[NUM_SAMPLES] = { 0 };
+volatile unsigned int samples[NUM_SAMPLES] = { 0 };
 volatile unsigned int sample_index = 0;
 volatile unsigned int sampling = 0;
-volatile uint8_t output = 0;
-static volatile uint8_t cifre[2] = { 0 };
+volatile unsigned int output = 0;
+static volatile unsigned int cifre[2] = { 0 };
 void buttons_setup(void)
 {
     //buttons
@@ -74,7 +74,7 @@ void output_setup(void)
 }
 void timer_setup(void)
 {
-    TA0CCR0 = ((SECOND/SAMPLE_RATE)/2  - 1);//polovina frekvence ide ovde
+    TA0CCR0 = ((SECOND / SAMPLE_RATE) / 2 - 1);    //polovina frekvence ide ovde
     TA0CCTL1 |= OUTMOD_4;      // toggle mode
     //TA0CCR1 = 5;             // any number since CCR0 defines period
     TA0CTL |= TASSEL__ACLK;
@@ -95,15 +95,12 @@ void adc_setup(void)
     /* 32 cycles for sampling, ref voltage is set by REF module, ADC ON */
     ADC12CTL0 |= ADC12ON;
     ADC12CTL1 |= ADC12SHS_1 + ADC12SSEL_3 + ADC12CONSEQ_2;
-                                  // start address ADC12MEM0, timer starts conv
-                                  // single channel continuous conversion, SMCLK clock
-                                  // SAMPCON sourced from the sampling timer
+    // start address ADC12MEM0, timer starts conv
+    // single channel continuous conversion, SMCLK clock
+    // SAMPCON sourced from the sampling timer
     ADC12CTL2 &= ~ADC12RES_2;      // 8 bit conversion result
     ADC12MCTL0 |= ADC12INCH_1;    //reference AVCC and AVSS, channel A0
     ADC12CTL0 |= ADC12ENC;        // enable ADC12
-
-    /* initialize Timer A0 for ADC12 trigger */
-    // CBOUT TA0 -> ADC12SHS1 this is internal, ports and pins not used (P1.2)
 }
 int main(void)
 {
@@ -170,6 +167,7 @@ void __attribute__ ((interrupt(TIMER1_A0_VECTOR))) TA1CCR0ISR(void) //debounce
         TA1CTL |= TACLR;        // clear timer
         P1IFG &= ~BIT1;        //clear flag
         P1IE |= BIT1;        //enable interrupt
+        TA2CTL |= MC__UP;   //display timer
         unsigned int i = 0;
         output = 0;
         for (i = 0; i < 200; i++)
@@ -184,6 +182,7 @@ void __attribute__ ((interrupt(TIMER1_A0_VECTOR))) TA1CCR0ISR(void) //debounce
         TA1CTL |= TACLR;        // clear timer
         P1IFG &= ~BIT4;        //clear flag
         P1IE |= BIT4;        //enable interrupt
+        TA2CTL |= MC__UP;   //display timer
         unsigned int i = 0;
         output = 0;
         for (i = 0; i < 200; i++)
@@ -200,6 +199,7 @@ void __attribute__ ((interrupt(TIMER1_A0_VECTOR))) TA1CCR0ISR(void) //debounce
         TA1CTL |= TACLR;        // clear timer
         P1IFG &= ~BIT5;        //clear flag
         P1IE |= BIT5;        //enable interrupt
+        TA2CTL |= MC__UP;   //display timer
         unsigned int i = 0;
         output = 0xFF;
         for (i = 0; i < 200; i++)
@@ -213,7 +213,7 @@ void __attribute__ ((interrupt(TIMER1_A0_VECTOR))) TA1CCR0ISR(void) //debounce
 }
 void __attribute__ ((interrupt(ADC12_VECTOR))) ADC12ISR(void) //sampling
 {
-    switch(ADC12IV)
+    switch (ADC12IV)
     {
     case ADC12IV_ADC12IFG0:
         if (sample_index < 200 && sampling)
@@ -244,6 +244,8 @@ void __attribute__ ((interrupt(TIMER2_A0_VECTOR))) TA2CCR0ISR(void) //screen mux
      * - set a..g for current display
      * - activate current display
      */
+    cifre[1] = (output >> 4) & 0x0F;
+    cifre[0] = output & 0x0F;
     if (current_digit)
     {
         P6OUT |= BIT4;          // turn off SEL2
@@ -258,10 +260,4 @@ void __attribute__ ((interrupt(TIMER2_A0_VECTOR))) TA2CCR0ISR(void) //screen mux
     }
     current_digit = (current_digit + 1) & 0x01;
     return;
-}
-void display(const uint8_t broj)
-{
-    //0x0F je za skidanje viših cifara
-    cifre[1] = (broj >> 4) & 0x0F;
-    cifre[0] = broj & 0x0F;
 }
