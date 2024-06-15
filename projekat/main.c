@@ -15,11 +15,12 @@
 #define NUM_SAMPLES    200     // 200 samples total
 #define SAMPLE_RATE    20      // 20 samples per second
 #define MUX_PERIOD     (164)  // ~5ms
-#define SECOND 32768            //1s
-#define DEBOUNCE 33             //1ms
+#define SECOND (32768)            // 1s
+#define DEBOUNCE (164)             // 5ms
 volatile unsigned int samples[NUM_SAMPLES] = { 0 };
 volatile unsigned int sample_index = 0;
 volatile unsigned int sampling = 0;
+volatile uint8_t data = 0;
 static volatile uint8_t cifre[2] = { 0 };
 void buttons_setup(void)
 {
@@ -74,10 +75,11 @@ void output_setup(void)
 void timer_setup(void)
 {
     // initialize Timer A0 - sampling
-    TA0CCR0 = SECOND / SAMPLE_RATE;      // Set timer count for 20Hz
-    TA0CCTL0 = CCIE;            // enable CCR0 interrupt
-    TA0CCTL1 |= OUTMOD_4;
-    TA0CTL = TASSEL__ACLK;
+    TB0CCR0 = SECOND / SAMPLE_RATE;      // Set timer count for 20Hz
+    TB0CCR1 = 5;            //any number for test
+    TB0CCTL0 = CCIE;            // enable CCR0 interrupt
+    TB0CCTL1 |= OUTMOD_4;
+    TB0CTL = TASSEL__ACLK;
     // initialize Timer A1 - debounce
     TA1CCR0 = DEBOUNCE;      // Set timer count for debounce
     TA1CCTL0 = CCIE;            // enable CCR0 interrupt
@@ -92,13 +94,13 @@ void adc_setup(void)
     //ADC
     P6SEL |= BIT1;             // set pin P6.1 as alternate function - A0 analog
     ADC12CTL0 &= ~ADC12ENC;     // disable while setting up
-    ADC12CTL0 |= ADC12ON;       // activate ADC
+    ADC12CTL0 |= ADC12ON | ADC12MSC | ADC12SHT0_3;       // activate ADC, multiple samples and sample cycles
     ADC12MCTL0 |= ADC12INCH_1;  // input channel A0 = P6.1
     ADC12CTL1 |= ADC12CONSEQ_2;  // single channel repeat
-    ADC12CTL1 |= ADC12SHS_0;    //trigger preko tajmera A0
-    ADC12CTL1 |= ADC12SSEL_1;   // clock setup‚
-    ADC12IE |= ADC12IE0;        // enable interrupt when MEM0 is written
+    ADC12CTL1 |= ADC12SHS_2;    //trigger preko tajmera B0
+    ADC12CTL1 |= ADC12SSEL_1;   // clock setup
     ADC12CTL0 |= ADC12ENC;      // enable conversion
+    ADC12IE |= ADC12IE0;        // enable interrupt when MEM0 is written
 }
 int main(void)
 {
@@ -152,13 +154,21 @@ void __attribute__ ((interrupt(TIMER1_A0_VECTOR))) TA1CCR0ISR(void) //debounce
 {
     if (((P2IN & BIT1) == 0) && ~(sampling))
     {
+        TA1CTL &= ~(MC__STOP | MC__UP);        // stop timer
+        TA1CTL |= TACLR;        // clear timer
+        P2IFG &= ~BIT1;        //clear flag
+        P2IE |= BIT1;        //enable interrupt
         sampling = 1;
         sample_index = 0;        // reset sample index
         P1OUT |= BIT0;           // set output as 1 (LED on)
-        TA0CTL |= MC__UP;        // Start Timer A0
+        TB0CTL |= MC__UP;        // Start Timer A0
     }
     if (((P1IN & BIT1) == 0) && ~(sampling))
     {
+        TA1CTL &= ~(MC__STOP | MC__UP);        // stop timer
+        TA1CTL |= TACLR;        // clear timer
+        P1IFG &= ~BIT1;        //clear flag
+        P1IE |= BIT1;        //enable interrupt
         unsigned int i = 0;
         unsigned long output = 0;
         for (i = 0; i < 200; i++)
@@ -169,6 +179,10 @@ void __attribute__ ((interrupt(TIMER1_A0_VECTOR))) TA1CCR0ISR(void) //debounce
     }
     if (((P1IN & BIT4) == 0) && ~sampling)
     {
+        TA1CTL &= ~(MC__STOP | MC__UP);        // stop timer
+        TA1CTL |= TACLR;        // clear timer
+        P1IFG &= ~BIT4;        //clear flag
+        P1IE |= BIT4;        //enable interrupt
         unsigned int i = 0;
         unsigned int output = 0;
         for (i = 0; i < 200; i++)
@@ -179,8 +193,12 @@ void __attribute__ ((interrupt(TIMER1_A0_VECTOR))) TA1CCR0ISR(void) //debounce
             }
         }
     }
-    if (((P1IN & BIT5))==0 && ~sampling)
+    if (((P1IN & BIT5)) == 0 && ~sampling)
     {
+        TA1CTL &= ~(MC__STOP | MC__UP);        // stop timer
+        TA1CTL |= TACLR;        // clear timer
+        P1IFG &= ~BIT5;        //clear flag
+        P1IE |= BIT5;        //enable interrupt
         unsigned int i = 0;
         unsigned int output = 0xFFFF;
         for (i = 0; i < 200; i++)
@@ -192,18 +210,24 @@ void __attribute__ ((interrupt(TIMER1_A0_VECTOR))) TA1CCR0ISR(void) //debounce
         }
     }
 }
-void __attribute__ ((interrupt(TIMER0_A0_VECTOR))) TA0CCR0ISR(void) //sampling
+void __attribute__ ((interrupt(ADC12_VECTOR))) ADC12ISR(void) //sampling
 {
-    if (sample_index < 200 && sampling)
+    switch(ADC12IV)
     {
-        ADC12CTL0 |= ADC12SC;           // manual timer trigger
-        samples[sample_index++] = ADC12MEM0;    // saèuvaj podatak u nizu
-    }
-    else
-    {
-        sampling = 0;
-        P1OUT &= ~BIT0;  // LED OFF
-        ADC12CTL0 &= ~ADC12ENC; //disable ADC
+    case ADC12IV_ADC12IFG0:
+        if (sample_index < 200 && sampling)
+        {
+            samples[sample_index++] = ADC12MEM0;    // saèuvaj podatak u nizu
+        }
+        else
+        {
+            sampling = 0;
+            P1OUT &= ~BIT0;  // LED OFF
+            ADC12CTL0 &= ~ADC12ENC; //disable ADC
+        }
+        break;
+    default:
+        break;
     }
 }
 void __attribute__ ((interrupt(TIMER2_A0_VECTOR))) TA2CCR0ISR(void) //screen mux
