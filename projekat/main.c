@@ -74,9 +74,7 @@ void output_setup(void)
 }
 void timer_setup(void)
 {
-    TA0CCR0 = ((SECOND/SAMPLE_RATE)/2  - 1);// f_OUT = 2 Hz, f_ACLK = 32768 Hz ID=8 => T_OUT = 2048.
-                                   // TOGGLE outmod => T_OUT = 2 * T_CCR0 =>
-                                   // T_CCR0 = T_OUT/2 = 1024 (TA0CCR0 = T_CCR0 - 1)
+    TA0CCR0 = ((SECOND/SAMPLE_RATE)/2  - 1);//polovina frekvence ide ovde
     TA0CCTL1 |= OUTMOD_4;      // toggle mode
     //TA0CCR1 = 5;             // any number since CCR0 defines period
     TA0CTL |= TASSEL__ACLK;
@@ -161,7 +159,6 @@ void __attribute__ ((interrupt(TIMER1_A0_VECTOR))) TA1CCR0ISR(void) //debounce
         TA1CTL &= ~(MC__STOP | MC__UP);        // stop timer
         TA1CTL |= TACLR;        // clear timer
         P2IFG &= ~BIT1;        //clear flag
-        P2IE |= BIT1;        //enable interrupt
         sampling = 1;
         sample_index = 0;        // reset sample index
         P1OUT |= BIT0;           // set output as 1 (LED on)
@@ -232,6 +229,7 @@ void __attribute__ ((interrupt(ADC12_VECTOR))) ADC12ISR(void) //sampling
             P1OUT &= ~BIT0;  // LED OFF
             ADC12CTL0 &= ~ADC12ENC; //disable ADC
             ADC12IFG &= ~ADC12IFG0; //briši flag
+            P2IE |= BIT1;        //enable interrupt
         }
         break;
     default:
