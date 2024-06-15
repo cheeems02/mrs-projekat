@@ -17,10 +17,10 @@
 #define MUX_PERIOD     (164)  // ~5ms
 #define SECOND (32768)            // 1s
 #define DEBOUNCE (164)             // 5ms
-volatile unsigned int samples[NUM_SAMPLES] = { 0 };
+volatile uint8_t samples[NUM_SAMPLES] = { 0 };
 volatile unsigned int sample_index = 0;
 volatile unsigned int sampling = 0;
-volatile unsigned int output = 0;
+volatile uint8_t output = 0;
 static volatile uint8_t cifre[2] = { 0 };
 void buttons_setup(void)
 {
@@ -120,6 +120,16 @@ int main(void)
 
     }
 }
+void __attribute__ ((interrupt(PORT2_VECTOR))) P2ISR(void) //debounce, start
+{
+    if (P2IFG & BIT1)       // check if P2.1 flag is set
+    {
+        /* start timer */
+        P2IE &= ~BIT1;              // disable P2.1 interrupt
+        TA1CTL |= MC__UP;           // start debounce timer
+        P2IFG &= ~BIT1;             // clear P2.1 flag
+    }
+}
 void __attribute__ ((interrupt(PORT1_VECTOR))) P1ISR(void) //debounce, outputs
 {
     if (P1IFG & BIT4)        // check if P1.4 flag is set
@@ -142,16 +152,6 @@ void __attribute__ ((interrupt(PORT1_VECTOR))) P1ISR(void) //debounce, outputs
         P1IE &= ~BIT5;              // disable P1.5 interrupt
         TA1CTL |= MC__UP;           // start debounce timer
         P1IFG &= ~BIT5;             // clear P1.5 flag
-    }
-}
-void __attribute__ ((interrupt(PORT2_VECTOR))) P2ISR(void) //debounce, start
-{
-    if (P2IFG & BIT1)       // check if P2.1 flag is set
-    {
-        /* start timer */
-        P2IE &= ~BIT1;              // disable P2.1 interrupt
-        TA1CTL |= MC__UP;           // start debounce timer
-        P2IFG &= ~BIT1;             // clear P2.1 flag
     }
 }
 void __attribute__ ((interrupt(TIMER1_A0_VECTOR))) TA1CCR0ISR(void) //debounce
@@ -222,12 +222,16 @@ void __attribute__ ((interrupt(ADC12_VECTOR))) ADC12ISR(void) //sampling
         if (sample_index < 200 && sampling)
         {
             samples[sample_index++] = ADC12MEM0;    // saèuvaj podatak u nizu
+            ADC12IFG &= ~ADC12IFG0; //briši flag
         }
         else
         {
             sampling = 0;
+            TA0CTL &= ~(MC__STOP | MC__UP);        // stop timer
+            TA0CTL |= TACLR;        // clear timer
             P1OUT &= ~BIT0;  // LED OFF
             ADC12CTL0 &= ~ADC12ENC; //disable ADC
+            ADC12IFG &= ~ADC12IFG0; //briši flag
         }
         break;
     default:
